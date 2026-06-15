@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>데이트 신청 💕</title>
+    
     <style>
         * {
             margin: 0;
@@ -30,7 +31,7 @@
             width: 100%;
             text-align: center;
         }
- 
+
         h1 {
             color: #667eea;
             margin-bottom: 30px;
@@ -83,7 +84,6 @@
             display: none;
         }
 
-        /* 네이티브 날짜/시간 선택기 스타일 */
         .date-time-selector {
             margin: 30px 0;
             display: flex;
@@ -131,7 +131,6 @@
             box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
         }
 
-        /* 날짜/시간 입력 필드의 아이콘 색상 */
         input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator {
             cursor: pointer;
@@ -204,7 +203,6 @@
             margin-bottom: 10px;
         }
 
-        /* 커스텀 알림창 스타일 */
         .custom-alert {
             display: none;
             position: fixed;
@@ -274,7 +272,34 @@
             box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
         }
 
-        /* 반응형 디자인 */
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success-message {
+            display: none;
+            color: #27ae60;
+            font-size: 1.1em;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 30px 20px;
@@ -352,6 +377,11 @@
             <div class="heart">💖</div>
             <h1>완벽해요! 🎉</h1>
             <div class="final-message" id="finalMessage"></div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px;">전송 중...</p>
+            </div>
+            <div class="success-message" id="successMessage">✅ 전송 완료!</div>
             <div class="heart">💕</div>
         </div>
     </div>
@@ -367,13 +397,15 @@
     </div>
 
     <script>
+        // Discord Webhook URL
+        const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1516038355735806112/yf2b3e9ZKxsrOUZb4WxMLS_MJNd4ZACiLzZGkhoTAcEewkVuNpy3kPix1-U4mVV7Yyp-';
+
         let selectedDate = null;
         let selectedTime = null;
         let selectedFood = null;
         let selectedPlace = null;
-        let noClickCount = 0; // 거절 버튼 클릭 횟수
+        let noClickCount = 0;
 
-        // 거절 버튼 클릭 시 나타날 메시지들
         const noMessages = [
             "그 답변은 옳지 않습니다! 🙅‍♀️",
             "다시 한번 생각해보세요! 🤔",
@@ -385,14 +417,12 @@
             "YES만 가능합니다! ✨"
         ];
 
-        // 거절 버튼 자석처럼 밀려나기
         const noBtn = document.getElementById('noBtn');
         const container = document.querySelector('.button-container');
         
         let noBtnX = 0;
         let noBtnY = 0;
 
-        // 초기 위치 설정
         function initNoBtnPosition() {
             const containerRect = container.getBoundingClientRect();
             noBtnX = containerRect.width / 2 + 80;
@@ -403,49 +433,39 @@
 
         initNoBtnPosition();
 
-        // 마우스 움직임 감지
         container.addEventListener('mousemove', (e) => {
             const containerRect = container.getBoundingClientRect();
             const btnRect = noBtn.getBoundingClientRect();
             
-            // 마우스 위치 (컨테이너 기준)
             const mouseX = e.clientX - containerRect.left;
             const mouseY = e.clientY - containerRect.top;
             
-            // 버튼 중심 위치
             const btnCenterX = noBtnX + btnRect.width / 2;
             const btnCenterY = noBtnY + btnRect.height / 2;
             
-            // 마우스와 버튼 사이의 거리
             const deltaX = btnCenterX - mouseX;
             const deltaY = btnCenterY - mouseY;
             const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
             
-            // 반발 거리 (이 거리 안에 들어오면 밀려남)
             const repelDistance = 150;
             
             if (distance < repelDistance) {
-                // 반발 강도 계산 (가까울수록 강하게)
                 const repelStrength = (repelDistance - distance) / repelDistance;
                 const pushDistance = 100 * repelStrength;
                 
-                // 밀려날 방향 계산
                 const angle = Math.atan2(deltaY, deltaX);
                 const pushX = Math.cos(angle) * pushDistance;
                 const pushY = Math.sin(angle) * pushDistance;
                 
-                // 새 위치 계산
                 let newX = noBtnX + pushX;
                 let newY = noBtnY + pushY;
                 
-                // 경계 체크
                 const maxX = containerRect.width - btnRect.width;
                 const maxY = containerRect.height - btnRect.height;
                 
                 newX = Math.max(0, Math.min(newX, maxX));
                 newY = Math.max(0, Math.min(newY, maxY));
                 
-                // 위치 업데이트
                 noBtnX = newX;
                 noBtnY = newY;
                 
@@ -454,17 +474,14 @@
             }
         });
 
-        // 거절 버튼 클릭 이벤트
         noBtn.addEventListener('click', () => {
             showAlert();
         });
 
-        // 알림창 표시
         function showAlert() {
             const alertBox = document.getElementById('customAlert');
             const alertMessage = document.getElementById('alertMessage');
             
-            // 메시지 선택 (순환)
             const message = noMessages[noClickCount % noMessages.length];
             alertMessage.textContent = message;
             
@@ -472,24 +489,20 @@
             noClickCount++;
         }
 
-        // 알림창 닫기
         function closeAlert() {
             const alertBox = document.getElementById('customAlert');
             alertBox.style.display = 'none';
         }
 
-        // 오늘 날짜를 최소값으로 설정
         const dateInput = document.getElementById('dateInput');
         const today = new Date().toISOString().split('T')[0];
         dateInput.min = today;
 
-        // 데이트 수락
         function acceptDate() {
             document.querySelector('.initial-container').style.display = 'none';
             document.querySelector('.calendar-container').style.display = 'block';
         }
 
-        // 음식 페이지로
         function nextToFood() {
             selectedDate = document.getElementById('dateInput').value;
             selectedTime = document.getElementById('timeInput').value;
@@ -514,7 +527,7 @@
             ];
 
             const foodOptions = document.getElementById('foodOptions');
-            foodOptions.innerHTML = ''; // 초기화
+            foodOptions.innerHTML = '';
             
             foods.forEach(food => {
                 const card = document.createElement('div');
@@ -529,7 +542,6 @@
             });
         }
 
-        // 장소 페이지로
         function nextToPlace() {
             if (!selectedFood) {
                 alert('음식을 선택해주세요! 😊');
@@ -551,7 +563,7 @@
             ];
 
             const placeOptions = document.getElementById('placeOptions');
-            placeOptions.innerHTML = ''; // 초기화
+            placeOptions.innerHTML = '';
             
             places.forEach(place => {
                 const card = document.createElement('div');
@@ -566,7 +578,6 @@
             });
         }
 
-        // 최종 페이지
         function showFinal() {
             if (!selectedPlace) {
                 alert('장소를 선택해주세요! 😊');
@@ -576,7 +587,6 @@
             document.querySelector('.place-container').style.display = 'none';
             document.querySelector('.final-container').style.display = 'block';
 
-            // 날짜 포맷팅
             const date = new Date(selectedDate);
             const year = date.getFullYear();
             const month = date.getMonth() + 1;
@@ -584,7 +594,6 @@
             const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
             const weekday = weekdays[date.getDay()];
             
-            // 시간 포맷팅
             const [hour, minute] = selectedTime.split(':');
             const hourNum = parseInt(hour);
             const period = hourNum >= 12 ? '오후' : '오전';
@@ -601,6 +610,76 @@
                 <p>약속 꼭 지켜야 해요! 😊</p>
                 <p>정말 기대돼요! 💕</p>
             `;
+
+            // Discord로 전송
+            sendToDiscord(year, month, day, weekday, period, displayHour, minute);
+        }
+
+        async function sendToDiscord(year, month, day, weekday, period, displayHour, minute) {
+            const loading = document.getElementById('loading');
+            const successMessage = document.getElementById('successMessage');
+            
+            loading.style.display = 'block';
+            successMessage.style.display = 'none';
+
+            const message = {
+                content: "@everyone 💕 데이트 신청 응답이 도착했어요!",
+                embeds: [{
+                    title: "💕 데이트 신청 응답",
+                    description: "상대방이 데이트를 수락했어요! 🎉",
+                    color: 6750207, // 보라색
+                    fields: [
+                        {
+                            name: "📅 날짜",
+                            value: `${year}년 ${month}월 ${day}일 (${weekday})`,
+                            inline: false
+                        },
+                        {
+                            name: "🕐 시간",
+                            value: `${period} ${displayHour}시 ${minute}분`,
+                            inline: false
+                        },
+                        {
+                            name: "🍽️ 음식",
+                            value: selectedFood,
+                            inline: true
+                        },
+                        {
+                            name: "🎯 장소",
+                            value: selectedPlace,
+                            inline: true
+                        }
+                    ],
+                    footer: {
+                        text: "기대되네요! 😊"
+                    },
+                    timestamp: new Date().toISOString()
+                }]
+            };
+
+            try {
+                const response = await fetch(DISCORD_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(message)
+                });
+
+                if (response.ok) {
+                    console.log('Discord 전송 성공!');
+                    loading.style.display = 'none';
+                    successMessage.style.display = 'block';
+                } else {
+                    console.error('Discord 전송 실패:', response.status);
+                    loading.style.display = 'none';
+                    alert('전송에 실패했습니다. 다시 시도해주세요.');
+                }
+            } catch (error) {
+                console.error('전송 오류:', error);
+                loading.style.display = 'none';
+                alert('전송 중 오류가 발생했습니다.');
+            }
         }
     </script>
 </body>
